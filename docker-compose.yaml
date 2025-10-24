@@ -1,0 +1,84 @@
+version: "3.3"
+
+services:
+  # ------------------------------------------------------------------------------------------------------------------
+  # User Micro-service
+  # ------------------------------------------------------------------------------------------------------------------
+
+  servicephp8: &servicephp8
+    image: registry.gitlab.com/infrastructure/alumni-docker-images:base-service-php8
+    networks:
+      - alumni_default
+
+  user:
+    <<: *servicephp8
+    volumes:
+      - $USER_PATH:/var/www/app
+      - ./docker/php-apache/php.ini:/usr/local/etc/php/php.ini
+      - ./docker/php-apache/default.conf:/etc/apache2/sites-enabled/000-default.conf
+    ports:
+      - 8018:80
+
+  # ------------------------------------------------------------------------------------------------------------------
+  # Database and Mail Services
+  # ------------------------------------------------------------------------------------------------------------------
+
+  mysql:
+    image: mysql/mysql-server:5.7
+    volumes:
+      - mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - 3316:3306
+    networks:
+      - alumni_default
+
+  mailcatcher:
+    image: schickling/mailcatcher
+    ports:
+      - 1080:1080
+      - 1025:1025
+    networks:
+      - alumni_default
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: "mailhog"
+    ports:
+      - 1026:1026
+      - 8025:8025
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: mysql
+    depends_on:
+      - mysql
+    networks:
+      - alumni_default
+
+  # ------------------------------------------------------------------------------------------------------------------
+  # RabbitMQ Service
+  # ------------------------------------------------------------------------------------------------------------------
+
+  rabbitmq:
+    build: ./docker/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - alumni_default
+
+networks:
+  alumni_default:
+    external: true
+
+volumes:
+  mysql:

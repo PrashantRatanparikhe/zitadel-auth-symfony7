@@ -1,0 +1,42 @@
+framework:
+    messenger:
+        # Reset services after consuming messages
+        default_bus: command.bus
+        buses:
+            command.bus:
+                default_middleware: allow_no_handlers
+            event.bus:
+                default_middleware: allow_no_handlers
+            query.bus:
+                default_middleware: allow_no_handlers
+
+        failure_transport: user_failed
+
+        serializer:
+            default_serializer: messenger.transport.symfony_serializer
+            symfony_serializer:
+                format: json
+                context: {}
+
+        transports:
+            cqrs_ms_zitadel:
+                dsn: '%env(MESSENGER_RABBIT_DSN)%'
+                options:
+                    exchange:
+                        name: cqrs_ms_zitadel
+                    queues:
+                        cqrs_ms_zitadel: ~
+                        
+            user_to_zitadel_batch_sync:
+                dsn: '%env(MESSENGER_RABBIT_DSN)%'
+                options:
+                    exchange:
+                        name: user_to_zitadel_batch_sync
+                    queues:
+                        user_to_zitadel_batch_sync: ~
+
+        routing:
+            # CQRS from USER MS to Zitadel
+            App\Message\Command\CQRS\MSZitadel\SyncUserToZitadelMessage: cqrs_ms_zitadel
+            # Migrate user from USER MS to Zitadel batch sync
+            'App\Message\Command\Migrate\Batch\MigrateUserToZitadelBatchSync': user_to_zitadel_batch_sync
